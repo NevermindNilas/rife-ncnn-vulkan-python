@@ -16,7 +16,7 @@ import pathlib
 import sys
 
 # third-party imports
-from PIL import Image
+import numpy as np
 
 # local imports
 if __package__ is None:
@@ -76,7 +76,7 @@ class Rife:
         else:
             raise FileNotFoundError(f"{model_dir} not found")
 
-    def process(self, image0: Image, image1: Image, timestep: float = 0.5) -> Image:
+    def process(self, image0, image1, timestep: float = 0.5):
         # Return the image immediately instead of doing the copy in the upstream part which cause black output problems
         # The reason is that the upstream code use ncnn::Mat::operator=(const Mat& m) does a reference copy which won't
         # change our OutImage data.
@@ -102,10 +102,10 @@ class Rife:
         )
 
         self._rife_object.process(raw_in_image0, raw_in_image1, timestep, raw_out_image)
-        return Image.frombytes(
-            image0.mode, (image0.width, image0.height), bytes(output_bytes)
-        )
 
+        return np.frombuffer(output_bytes, dtype=np.uint8).reshape(
+            (image0.height, image0.width, channels)
+        )
 
 class RIFE(Rife):
     ...
