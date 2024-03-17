@@ -75,36 +75,38 @@ class Rife:
         # if no model_dir is specified but doesn't exist
         else:
             raise FileNotFoundError(f"{model_dir} not found")
-
-    def process(self, image0, image1, timestep: float = 0.5):
-        # Return the image immediately instead of doing the copy in the upstream part which cause black output problems
-        # The reason is that the upstream code use ncnn::Mat::operator=(const Mat& m) does a reference copy which won't
-        # change our OutImage data.
+    
+    def process(self, image0, image1, timestep: float = 0.5, shape: tuple = None, channels: int = 3):
+        # TO:DO - Add caching
         if timestep == 0.:
             return image0
         elif timestep == 1.:
             return image1
 
+        if shape is None:
+            height, width, channels = image0.shape
+        else:
+            height, width = shape
+
         image0_bytes = bytearray(image0.tobytes())
         image1_bytes = bytearray(image1.tobytes())
-        channels = int(len(image0_bytes) / (image0.width * image0.height))
         output_bytes = bytearray(len(image0_bytes))
 
         # convert image bytes into ncnn::Mat Image
         raw_in_image0 = wrapped.Image(
-            image0_bytes, image0.width, image0.height, channels
+            image0_bytes, width, height, channels
         )
         raw_in_image1 = wrapped.Image(
-            image1_bytes, image1.width, image1.height, channels
+            image1_bytes, width, height, channels
         )
         raw_out_image = wrapped.Image(
-            output_bytes, image0.width, image0.height, channels
+            output_bytes, width, height, channels
         )
 
         self._rife_object.process(raw_in_image0, raw_in_image1, timestep, raw_out_image)
 
         return np.frombuffer(output_bytes, dtype=np.uint8).reshape(
-            (image0.height, image0.width, channels)
+            (height, width, channels)
         )
 
 class RIFE(Rife):
